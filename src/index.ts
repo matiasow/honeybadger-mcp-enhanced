@@ -1,14 +1,9 @@
 #!/usr/bin/env node
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ErrorCode,
-  ListToolsRequestSchema,
-  McpError,
-} from '@modelcontextprotocol/sdk/types.js';
 import axios from 'axios';
+import { z } from 'zod';
 
 interface HoneybadgerConfig {
   apiKey: string;
@@ -63,14 +58,16 @@ interface HoneybadgerNotice {
 }
 
 class HoneybadgerMCPServer {
-  private server: Server;
+  private server: McpServer;
   private config: HoneybadgerConfig;
 
   constructor() {
-    this.server = new Server(
+    this.server = new McpServer(
       {
         name: 'honeybadger-mcp',
-        version: '0.1.0',
+        version: '0.2.1',
+      },
+      {
         capabilities: {
           tools: {},
         },
@@ -84,151 +81,159 @@ class HoneybadgerMCPServer {
       baseUrl: process.env.HONEYBADGER_BASE_URL || 'https://app.honeybadger.io',
     };
 
-    this.setupToolHandlers();
+    this.setupTools();
   }
 
-  private setupToolHandlers() {
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      return {
-        tools: [
-          {
-            name: 'get_honeybadger_fault',
-            description: 'Fetch a specific fault/error from Honeybadger by ID',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                fault_id: {
-                  type: 'string',
-                  description: 'The ID of the fault to fetch',
-                },
-                project_id: {
-                  type: 'string',
-                  description: 'Optional project ID (uses env var if not provided)',
-                },
-              },
-              required: ['fault_id'],
-            },
-          },
-          {
-            name: 'get_honeybadger_notices',
-            description: 'Fetch notices (occurrences) for a specific fault',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                fault_id: {
-                  type: 'string',
-                  description: 'The ID of the fault to fetch notices for',
-                },
-                project_id: {
-                  type: 'string',
-                  description: 'Optional project ID (uses env var if not provided)',
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Number of notices to fetch (default: 10, max: 100)',
-                  default: 10,
-                },
-              },
-              required: ['fault_id'],
-            },
-          },
-          {
-            name: 'list_honeybadger_faults',
-            description: 'List recent faults from Honeybadger',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                project_id: {
-                  type: 'string',
-                  description: 'Optional project ID (uses env var if not provided)',
-                },
-                limit: {
-                  type: 'number',
-                  description: 'Number of faults to fetch (default: 20, max: 100)',
-                  default: 20,
-                },
-                environment: {
-                  type: 'string',
-                  description: 'Filter by environment (e.g., production, staging)',
-                },
-                resolved: {
-                  type: 'boolean',
-                  description: 'Filter by resolved status',
-                },
-              },
-              required: [],
-            },
-          },
-          {
-            name: 'analyze_honeybadger_issue',
-            description: 'Comprehensive analysis of a Honeybadger issue with fix suggestions',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                fault_id: {
-                  type: 'string',
-                  description: 'The ID of the fault to analyze',
-                },
-                project_id: {
-                  type: 'string',
-                  description: 'Optional project ID (uses env var if not provided)',
-                },
-                include_context: {
-                  type: 'boolean',
-                  description: 'Include request context and parameters in analysis',
-                  default: true,
-                },
-              },
-              required: ['fault_id'],
-            },
-          },
-        ],
-      };
-    });
-
-    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-
-      if (!args) {
-        throw new McpError(ErrorCode.InvalidRequest, 'Tool arguments are missing');
-      }
-
-      try {
-        switch (name) {
-          case 'get_honeybadger_fault':
-            return await this.getFault(args.fault_id as string, args.project_id as string | undefined);
-
-          case 'get_honeybadger_notices':
-            return await this.getNotices(args.fault_id as string, args.project_id as string | undefined, args.limit as number | undefined);
-
-          case 'list_honeybadger_faults':
-            return await this.listFaults(args as any);
-
-          case 'analyze_honeybadger_issue':
-            return await this.analyzeIssue(args.fault_id as string, args.project_id as string | undefined, args.include_context as boolean | undefined);
-
-          default:
-            throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
+  private setupTools() {
+    // Register get_honeybadger_fault tool
+    // @ts-expect-error - TypeScript has issues with deep type instantiation in MCP SDK
+    this.server.registerTool(
+      'get_honeybadger_fault',
+      {
+        description: 'Fetch a specific fault/error from Honeybadger by ID',
+        inputSchema: {
+          fault_id: z.string().describe('The ID of the fault to fetch'),
+          project_id: z.string().optional().describe('Optional project ID (uses env var if not provided)'),
+        },
+      },
+      async ({ fault_id, project_id }) => {
+        const pid = project_id || this.config.projectId;
+        if (!pid) {
+          throw new Error('Project ID is required');
         }
-      } catch (error) {
-        if (error instanceof McpError) {
-          throw error;
-        }
-        throw new McpError(ErrorCode.InternalError, `Tool execution failed: ${error}`);
+
+        const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${fault_id}`);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(data, null, 2),
+            },
+          ],
+        };
       }
-    });
+    );
+
+    // Register get_honeybadger_notices tool
+    this.server.registerTool(
+      'get_honeybadger_notices',
+      {
+        description: 'Fetch notices (occurrences) for a specific fault',
+        inputSchema: {
+          fault_id: z.string().describe('The ID of the fault to fetch notices for'),
+          project_id: z.string().optional().describe('Optional project ID (uses env var if not provided)'),
+          limit: z.number().default(10).describe('Number of notices to fetch (default: 10, max: 100)'),
+        },
+      },
+      async ({ fault_id, project_id, limit = 10 }) => {
+        const pid = project_id || this.config.projectId;
+        if (!pid) {
+          throw new Error('Project ID is required');
+        }
+
+        const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${fault_id}/notices`, {
+          limit: Math.min(limit, 100),
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(data, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // Register list_honeybadger_faults tool
+    this.server.registerTool(
+      'list_honeybadger_faults',
+      {
+        description: 'List recent faults from Honeybadger',
+        inputSchema: {
+          project_id: z.string().optional().describe('Optional project ID (uses env var if not provided)'),
+          limit: z.number().default(20).describe('Number of faults to fetch (default: 20, max: 100)'),
+          environment: z.string().optional().describe('Filter by environment (e.g., production, staging)'),
+          resolved: z.boolean().optional().describe('Filter by resolved status'),
+        },
+      },
+      async ({ project_id, limit = 20, environment, resolved }) => {
+        const pid = project_id || this.config.projectId;
+        if (!pid) {
+          throw new Error('Project ID is required');
+        }
+
+        const params: any = {
+          limit: Math.min(limit, 100),
+        };
+
+        if (environment) params.environment = environment;
+        if (typeof resolved === 'boolean') params.resolved = resolved;
+
+        const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults`, params);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(data, null, 2),
+            },
+          ],
+        };
+      }
+    );
+
+    // Register analyze_honeybadger_issue tool
+    this.server.registerTool(
+      'analyze_honeybadger_issue',
+      {
+        description: 'Comprehensive analysis of a Honeybadger issue with fix suggestions',
+        inputSchema: {
+          fault_id: z.string().describe('The ID of the fault to analyze'),
+          project_id: z.string().optional().describe('Optional project ID (uses env var if not provided)'),
+          include_context: z.boolean().default(true).describe('Include request context and parameters in analysis'),
+        },
+      },
+      async ({ fault_id, project_id, include_context = true }) => {
+        const pid = project_id || this.config.projectId;
+        if (!pid) {
+          throw new Error('Project ID is required');
+        }
+
+        // Fetch fault details
+        const fault = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${fault_id}`);
+
+        // Fetch recent notices
+        const notices = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${fault_id}/notices`, {
+          limit: 5,
+        });
+
+        // Create comprehensive analysis
+        const analysis = this.generateAnalysis(fault, notices.results || [], include_context);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: analysis,
+            },
+          ],
+        };
+      }
+    );
   }
 
   private async makeHoneybadgerRequest(endpoint: string, params: any = {}) {
     if (!this.config.apiKey) {
-      throw new McpError(ErrorCode.InvalidRequest, 'HONEYBADGER_API_KEY environment variable is required');
+      throw new Error('HONEYBADGER_API_KEY environment variable is required');
     }
 
     const username = this.config.apiKey;
     const password = '';
     const url = `${this.config.baseUrl}/v2${endpoint}`;
     const credentials = Buffer.from(`${username}:${password}`).toString('base64');
-
 
     try {
       const response = await axios.get(url, {
@@ -242,103 +247,12 @@ class HoneybadgerMCPServer {
       return response.data;
     } catch (error: any) {
       if (error.response) {
-        throw new McpError(
-          ErrorCode.InvalidRequest,
+        throw new Error(
           `Honeybadger API error: ${error.response.status} - ${error.response.data?.error || error.response.statusText}`
         );
       }
-      throw new McpError(ErrorCode.InternalError, `Network error: ${error.message}`);
+      throw new Error(`Network error: ${error.message}`);
     }
-  }
-
-  private async getFault(faultId: string, projectId?: string): Promise<any> {
-    const pid = projectId || this.config.projectId;
-    if (!pid) {
-      throw new McpError(ErrorCode.InvalidRequest, 'Project ID is required');
-    }
-
-    const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${faultId}`);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(data, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async getNotices(faultId: string, projectId?: string, limit: number = 10): Promise<any> {
-    const pid = projectId || this.config.projectId;
-    if (!pid) {
-      throw new McpError(ErrorCode.InvalidRequest, 'Project ID is required');
-    }
-
-    const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${faultId}/notices`, {
-      limit: Math.min(limit, 100),
-    });
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(data, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async listFaults(args: any): Promise<any> {
-    const pid = args.project_id || this.config.projectId;
-    if (!pid) {
-      throw new McpError(ErrorCode.InvalidRequest, 'Project ID is required');
-    }
-
-    const params: any = {
-      limit: Math.min(args.limit || 20, 100),
-    };
-
-    if (args.environment) params.environment = args.environment;
-    if (typeof args.resolved === 'boolean') params.resolved = args.resolved;
-
-    const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults`, params);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(data, null, 2),
-        },
-      ],
-    };
-  }
-
-  private async analyzeIssue(faultId: string, projectId?: string, includeContext: boolean = true): Promise<any> {
-    const pid = projectId || this.config.projectId;
-    if (!pid) {
-      throw new McpError(ErrorCode.InvalidRequest, 'Project ID is required');
-    }
-
-    // Fetch fault details
-    const fault = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${faultId}`);
-
-    // Fetch recent notices
-    const notices = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/${faultId}/notices`, {
-      limit: 5,
-    });
-
-    // Create comprehensive analysis
-    const analysis = this.generateAnalysis(fault, notices.results || [], includeContext);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: analysis,
-        },
-      ],
-    };
   }
 
   private generateAnalysis(fault: HoneybadgerFault, notices: HoneybadgerNotice[], includeContext: boolean): string {
