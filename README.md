@@ -2,6 +2,8 @@
 
 Enhanced MCP server for Honeybadger error tracking with 15 tools and full API parity. Access and analyze your errors directly from Claude Code, Cursor, or any MCP-compatible client.
 
+> **Based on** [vishalzambre/honeybadger-mcp](https://github.com/vishalzambre/honeybadger-mcp) — this project is a fork that extends the original with additional tools, full API parity, read-only mode, and structured error handling.
+
 ## Prerequisites
 
 - Node.js 18+
