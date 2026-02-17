@@ -1,256 +1,329 @@
-# Honeybadger MCP Server Setup Guide
+# Honeybadger MCP Server Enhanced
 
-This MCP server integrates Honeybadger error tracking with Cursor IDE, allowing you to fetch and analyze errors directly from your development environment.
+Enhanced MCP server for Honeybadger error tracking with 15 tools and full API parity. Access and analyze your errors directly from Claude Code, Cursor, or any MCP-compatible client.
 
-<a href="https://glama.ai/mcp/servers/@vishalzambre/honeybadger-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@vishalzambre/honeybadger-mcp/badge" alt="Honeybadger Server MCP server" />
-</a>
-
-<a href="https://www.buymeacoffee.com/vishalzambre" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+> **Based on** [vishalzambre/honeybadger-mcp](https://github.com/vishalzambre/honeybadger-mcp) — this project is a fork that extends the original with additional tools, full API parity, read-only mode, and structured error handling.
 
 ## Prerequisites
 
-- Node.js 18+ installed
+- Node.js 18+
 - Honeybadger account with API access
-- Cursor IDE with MCP support
 
 ## Installation
 
-### 1. Clone the MCP Server
+### Claude Code
 
 ```bash
-git clone git@github.com:vishalzambre/honeybadger-mcp.git
+claude mcp add honeybadger \
+  -e HONEYBADGER_API_KEY=your_token \
+  -e HONEYBADGER_PROJECT_ID=12345 \
+  -- npx -y honeybadger-mcp-enhanced
+```
+
+### Cursor
+
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
+
+```json
+{
+  "mcpServers": {
+    "honeybadger": {
+      "command": "npx",
+      "args": ["-y", "honeybadger-mcp-enhanced"],
+      "env": {
+        "HONEYBADGER_API_KEY": "your_personal_auth_token",
+        "HONEYBADGER_PROJECT_ID": "12345"
+      }
+    }
+  }
+}
+```
+
+Open Cursor settings → **Developer** → **Edit Config** to find the file.
+
+### Google Antigravity
+
+Add to `~/.gemini/antigravity/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "honeybadger": {
+      "command": "npx",
+      "args": ["-y", "honeybadger-mcp-enhanced"],
+      "env": {
+        "HONEYBADGER_API_KEY": "your_personal_auth_token",
+        "HONEYBADGER_PROJECT_ID": "12345"
+      }
+    }
+  }
+}
+```
+
+Open Antigravity → Agent session → **…** → **MCP Servers** → **Manage MCP Servers** → **View raw config**.
+
+### From source
+
+```bash
+git clone git@github.com:matiasow/honeybadger-mcp.git
 cd honeybadger-mcp
-npm install
+npm install && npm run build
 ```
 
-### 2. Build the Project
+### Environment Variables
 
-```bash
-npm run build
-```
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `HONEYBADGER_API_KEY` | **Yes** | — | Personal auth token from https://app.honeybadger.io/users/auth_tokens |
+| `HONEYBADGER_PROJECT_ID` | No | — | Default project ID (can be overridden per tool call) |
+| `HONEYBADGER_READ_ONLY` | No | `true` | Set to `"false"` to enable write operations |
+| `HONEYBADGER_BASE_URL` | No | `https://app.honeybadger.io` | Override for self-hosted instances |
 
-### 3. Using as an NPM Package (Recommended)
+> **Important:** The server runs in **read-only mode by default**. Write tools (`create_honeybadger_project`, `update_honeybadger_project`, `delete_honeybadger_project`) are hidden unless `HONEYBADGER_READ_ONLY=false` is explicitly set.
 
-**Global Installation:**
+### Getting Your API Key
 
-```bash
-npm install -g honeybadger-mcp
-```
+1. Go to https://app.honeybadger.io/users/auth_tokens
+2. Create a Personal Auth Token
+3. Use it as `HONEYBADGER_API_KEY`
 
-Then configure it in Cursor:
+### Finding Your Project ID
 
-```json
-{
-  "mcpServers": {
-    "honeybadger": {
-      "command": "honeybadger-mcp",
-      "env": {
-        "HONEYBADGER_API_KEY": "your_api_key_here",
-        "HONEYBADGER_PROJECT_ID": "your_project_id"
-      }
-    }
-  }
-}
-```
-
-**Project-based Installation (Alternative):**
-
-If you prefer to manage the MCP server as a project dependency:
-
-```bash
-npm install honeybadger-mcp
-```
-
-In this case, the command in your Cursor `mcp_servers.json` would point to the local installation within your project's `node_modules`:
-
-```json
-{
-  "mcpServers": {
-    "honeybadger": {
-      "command": "node",
-      "args": ["./node_modules/honeybadger-mcp/dist/index.js"],
-      "env": {
-        "HONEYBADGER_API_KEY": "your_api_key_here",
-        "HONEYBADGER_PROJECT_ID": "your_project_id"
-      }
-    }
-  }
-}
-```
-
-### 4. Configure Environment Variables
-
-Create a `.env` file in your project root:
-
-```bash
-# Required: Your Honeybadger API key
-HONEYBADGER_API_KEY=your_api_key_here
-
-# Optional: Default project ID (can be overridden per request)
-HONEYBADGER_PROJECT_ID=your_project_id
-
-# Optional: Custom Honeybadger URL (defaults to https://app.honeybadger.io)
-HONEYBADGER_BASE_URL=https://app.honeybadger.io
-```
-
-### 4. Get Your Honeybadger Credentials
-
-1. **API Key**:
-   - Go to https://app.honeybadger.io/users/auth_tokens
-   - Create a new Personal Auth Token
-   - Copy the token for your `.env` file
-
-2. **Project ID**:
-   - Go to your project in Honeybadger
-   - The project ID is in the URL: `https://app.honeybadger.io/projects/{PROJECT_ID}`
-   - Or find it in project settings
-
-## Cursor Configuration
-
-### 1. Configure MCP in Cursor
-
-Add the MCP server to your Cursor configuration. Edit your `~/.cursor/mcp_servers.json` (or equivalent):
-
-```json
-{
-  "mcpServers": {
-    "honeybadger": {
-      "command": "node",
-      "args": ["/path/to/honeybadger-mcp/dist/index.js"],
-      "env": {
-        "HONEYBADGER_API_KEY": "your_api_key_here",
-        "HONEYBADGER_PROJECT_ID": "your_project_id"
-      }
-    }
-  }
-}
-```
-
-### 2. Alternative: Global Installation
-
-This section will be updated or removed as it's now covered above. If you prefer the old way of cloning and installing globally from a local path, you can still do so, but using the published npm package is recommended for easier updates and management.
-
-If installing from a local clone:
-```bash
-# Navigate to your cloned honeybadger-mcp directory
-npm install -g . # Installs from the current directory
-
-# Then configure in Cursor as before
-# ... (Cursor configuration for local global install)
-```
-
-## Usage
-
-Once configured, you can use these tools in Cursor:
-
-### 1. List Recent Faults
-
-```
-List recent unresolved errors from Honeybadger in production environment
-```
-
-### 2. Get Specific Fault Details
-
-```
-Get details for Honeybadger fault ID 12345
-```
-
-### 3. Analyze an Issue
-
-```
-Analyze Honeybadger issue 12345 and provide fix suggestions
-```
-
-### 4. Get Error Occurrences
-
-```
-Get the latest 5 occurrences for Honeybadger fault 12345
-```
+The project ID is in the URL when viewing a project: `https://app.honeybadger.io/projects/{PROJECT_ID}`
 
 ## Available Tools
 
-### `list_honeybadger_faults`
-Lists recent faults with optional filtering by environment and resolved status.
+### Projects
 
-**Parameters:**
-- `project_id` (optional): Project ID
-- `limit` (optional): Number of faults (default: 20, max: 100)
-- `environment` (optional): Filter by environment
-- `resolved` (optional): Filter by resolved status
+#### `list_honeybadger_projects`
+List all projects you have access to.
 
-### `get_honeybadger_fault`
-Fetches detailed information about a specific fault.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `account_id` | string | No | Filter by account ID |
+| `page` | number | No | Page number (default: 1) |
+| `per_page` | number | No | Results per page, max 100 (default: 20) |
 
-**Parameters:**
-- `fault_id` (required): The fault ID
-- `project_id` (optional): Project ID
+#### `get_honeybadger_project`
+Get detailed information about a specific project.
 
-### `get_honeybadger_notices`
-Fetches notices (error occurrences) for a specific fault.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | number | **Yes** | Project ID |
 
-**Parameters:**
-- `fault_id` (required): The fault ID
-- `project_id` (optional): Project ID
-- `limit` (optional): Number of notices (default: 10, max: 100)
+#### `get_honeybadger_project_occurrence_counts`
+Get occurrence counts over time for a project.
 
-### `analyze_honeybadger_issue`
-Provides comprehensive analysis with fix suggestions.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_id` | number | No | Project ID (uses `HONEYBADGER_PROJECT_ID` if omitted) |
+| `period` | string | No | `hour`, `day`, `week`, or `month` (default: `hour`) |
+| `environment` | string | No | Filter by environment |
 
-**Parameters:**
-- `fault_id` (required): The fault ID
-- `project_id` (optional): Project ID
-- `include_context` (optional): Include request context (default: true)
+#### `get_honeybadger_project_integrations`
+List configured integrations (Slack, PagerDuty, etc.) for a project.
 
-## Example Workflow
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_id` | number | No | Project ID |
 
-1. **List recent errors**: "Show me the latest unresolved errors from production"
-2. **Analyze specific error**: "Analyze Honeybadger fault 12345 and suggest fixes"
-3. **Get error context**: "Get the latest occurrences for fault 12345 with full context"
-4. **Review and fix**: Use the analysis to understand and fix the issue in your code
+#### `get_honeybadger_project_report`
+Get structured report data for a project.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_id` | number | No | Project ID |
+| `report` | string | **Yes** | `notices_by_class`, `notices_by_location`, `notices_by_user`, or `notices_per_day` |
+| `start` | string | No | Start timestamp (RFC3339) |
+| `stop` | string | No | Stop timestamp (RFC3339) |
+| `environment` | string | No | Filter by environment |
+
+#### `create_honeybadger_project` ⚠️ Write
+Create a new project. Requires `HONEYBADGER_READ_ONLY=false`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `account_id` | string | **Yes** | Account to create the project in |
+| `name` | string | **Yes** | Project name |
+| `resolve_errors_on_deploy` | boolean | No | Auto-resolve faults on deploy |
+| `disable_public_links` | boolean | No | Disable public fault sharing links |
+| `user_url` | string | No | URL pattern for user admin pages |
+| `source_url` | string | No | URL pattern linking backtraces to your git browser |
+| `purge_days` | number | No | Data retention in days |
+| `user_search_field` | string | No | Context field for user lookup (e.g. `context.user_email`) |
+
+#### `update_honeybadger_project` ⚠️ Write
+Update an existing project. Requires `HONEYBADGER_READ_ONLY=false`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | number | **Yes** | Project ID |
+| `name` | string | No | New name |
+| `resolve_errors_on_deploy` | boolean | No | Auto-resolve faults on deploy |
+| `disable_public_links` | boolean | No | Disable public fault sharing links |
+| `user_url` | string | No | URL pattern for user admin pages |
+| `source_url` | string | No | URL pattern linking backtraces to your git browser |
+| `purge_days` | number | No | Data retention in days |
+| `user_search_field` | string | No | Context field for user lookup |
+
+#### `delete_honeybadger_project` ⚠️ Write — Destructive
+Permanently delete a project. Requires `HONEYBADGER_READ_ONLY=false`.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | number | **Yes** | Project ID |
+| `confirm` | boolean | **Yes** | Must be `true` to confirm deletion |
+
+---
+
+### Faults
+
+#### `list_honeybadger_faults`
+List faults for a project with filtering and ordering.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_id` | number | No | Project ID |
+| `q` | string | No | Search query |
+| `order` | string | No | `recent` or `frequent` (default: `recent`) |
+| `limit` | number | No | Max results, up to 25 (default: 20) |
+| `page` | number | No | Page number |
+| `created_after` | string | No | Filter faults created after this timestamp (RFC3339) |
+| `occurred_after` | string | No | Filter faults that occurred after this timestamp (RFC3339) |
+| `occurred_before` | string | No | Filter faults that occurred before this timestamp (RFC3339) |
+
+#### `get_honeybadger_fault`
+Get detailed information about a specific fault.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fault_id` | number | **Yes** | Fault ID |
+| `project_id` | number | No | Project ID |
+
+#### `get_honeybadger_fault_counts`
+Get fault count statistics with optional filtering.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_id` | number | No | Project ID |
+| `q` | string | No | Search query |
+| `created_after` | string | No | RFC3339 timestamp |
+| `occurred_after` | string | No | RFC3339 timestamp |
+| `occurred_before` | string | No | RFC3339 timestamp |
+
+#### `list_honeybadger_fault_notices`
+List individual error occurrences (notices) for a fault.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fault_id` | number | **Yes** | Fault ID |
+| `project_id` | number | No | Project ID |
+| `limit` | number | No | Max results, up to 25 (default: 10) |
+
+#### `list_honeybadger_fault_affected_users`
+List users who were affected by a fault.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fault_id` | number | **Yes** | Fault ID |
+| `project_id` | number | No | Project ID |
+| `q` | string | No | Search query |
+
+---
+
+### Analytics
+
+#### `query_honeybadger_insights`
+Execute a BadgerQL query against Insights data.
+
+> **Note:** BadgerQL/Insights is a premium Honeybadger feature. This tool returns a `Not found` error if your plan does not include it.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `project_id` | number | No | Project ID |
+| `query` | string | **Yes** | BadgerQL query string |
+| `ts` | string | No | Time range: `today`, `week`, or ISO 8601 duration like `PT3H` (default: `PT3H`) |
+| `timezone` | string | No | IANA timezone, e.g. `America/New_York` |
+
+#### `analyze_honeybadger_issue`
+Comprehensive AI-powered analysis of an error with stack trace review, fix suggestions, trend data, and affected user impact.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `fault_id` | number | **Yes** | Fault ID |
+| `project_id` | number | No | Project ID |
+| `include_context` | boolean | No | Include request context in analysis (default: true) |
+
+---
+
+## Usage Examples
+
+### Investigating a production incident
+
+```
+Show me the most frequent unresolved errors from the last 24 hours
+→ list_honeybadger_faults (order: frequent, occurred_after: ...)
+
+Analyze fault 127320184 in detail
+→ analyze_honeybadger_issue (fault_id: 127320184)
+
+Which users were affected?
+→ list_honeybadger_fault_affected_users (fault_id: 127320184)
+```
+
+### Project discovery
+
+```
+List all my Honeybadger projects
+→ list_honeybadger_projects
+
+What integrations are configured for project 41227?
+→ get_honeybadger_project_integrations (project_id: 41227)
+
+Show me a report of errors by class for the last week
+→ get_honeybadger_project_report (report: notices_by_class, start: ..., stop: ...)
+```
+
+### Custom analytics with BadgerQL
+
+```
+Top 10 error classes by count over the last week
+→ query_honeybadger_insights (query: "SELECT class, COUNT(*) as count FROM notices GROUP BY class ORDER BY count DESC LIMIT 10", ts: "week")
+```
 
 ## Troubleshooting
 
-### Common Issues
+| Issue | Solution |
+|-------|----------|
+| `Authentication failed` | Verify `HONEYBADGER_API_KEY` is a valid Personal Auth Token |
+| `Not found` | Check project and fault IDs are correct integers |
+| Write tools not appearing | Set `HONEYBADGER_READ_ONLY=false` in your MCP config |
+| `Rate limit exceeded` | Wait a moment and retry |
 
-1. **Authentication Error**: Verify your API key is correct and has proper permissions
-2. **Project Not Found**: Check your project ID is correct
-3. **Connection Issues**: Verify network access to Honeybadger API
-
-### Debug Mode
-
-Run the server directly to see error messages:
-
+**Run the server directly to see output:**
 ```bash
-node dist/index.js
+HONEYBADGER_API_KEY=your_key node dist/index.js
 ```
 
-### Logs
+**Check MCP client logs:**
+- macOS Cursor: `~/Library/Logs/Cursor/`
+- Claude Code: check terminal output
 
-Check Cursor logs for MCP-related issues:
-- macOS: `~/Library/Logs/Cursor/`
-- Windows: `%APPDATA%\Cursor\logs\`
-- Linux: `~/.config/Cursor/logs/`
+## Security
 
-## Security Notes
-
-- Store API keys securely and never commit them to version control
-- Use environment-specific API keys when possible
-- Consider using read-only API tokens for this integration
-- Regularly rotate your API keys
+- Never commit your API key to version control
+- The server runs read-only by default — write operations require explicit opt-in
+- Use environment-specific API keys where possible
 
 ## Contributing
 
-To extend this MCP server:
-
-1. Add new tools in the `setupToolHandlers()` method
-2. Implement corresponding handler methods
-3. Update the tool list and documentation
-4. Test thoroughly with your Honeybadger setup
+1. Add new tools in `registerReadTools()` or `registerWriteTools()` in `src/index.ts`
+2. Use `z.number()` for all ID parameters, `z.string()` only for `account_id`
+3. Wrap every handler in `try/catch` returning `this.toolError(e.message)` on failure
+4. Add `annotations: { title, readOnlyHint, destructiveHint }` to every tool
+5. Run `npm run build` to verify no TypeScript errors
 
 ## Support
 
-For issues with:
-- **This MCP server**: Check the code and configuration
-- **Honeybadger API**: Refer to [Honeybadger API docs](https://docs.honeybadger.io/api/)
-- **Cursor MCP integration**: Check Cursor documentation
+- **Honeybadger API docs**: https://docs.honeybadger.io/api/
+- **MCP protocol**: https://modelcontextprotocol.io
