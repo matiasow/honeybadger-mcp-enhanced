@@ -609,7 +609,7 @@ All IDs (project_id, fault_id) are integers, not strings.`,
         annotations: {
           title: 'Create Project',
           readOnlyHint: false,
-          destructiveHint: true,
+          destructiveHint: false,
         },
         inputSchema: {
           account_id: z.string().min(1).describe('The account ID to associate the project with (required)'),
@@ -656,7 +656,7 @@ All IDs (project_id, fault_id) are integers, not strings.`,
         annotations: {
           title: 'Update Project',
           readOnlyHint: false,
-          destructiveHint: true,
+          destructiveHint: false,
         },
         inputSchema: {
           id: z.number().min(1).describe('The project ID to update'),
