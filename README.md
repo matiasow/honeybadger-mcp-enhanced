@@ -65,8 +65,8 @@ Open Antigravity → Agent session → **…** → **MCP Servers** → **Manage 
 ### From source
 
 ```bash
-git clone git@github.com:matiasow/honeybadger-mcp.git
-cd honeybadger-mcp
+git clone git@github.com:matiasow/honeybadger-mcp-enhanced.git
+cd honeybadger-mcp-enhanced
 npm install && npm run build
 ```
 
