@@ -1,12 +1,6 @@
-# Honeybadger MCP Server
+# Honeybadger MCP Server Enhanced
 
-MCP server for Honeybadger error tracking. Access and analyze your errors directly from Claude Code, Cursor, or any MCP-compatible client.
-
-<a href="https://glama.ai/mcp/servers/@vishalzambre/honeybadger-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@vishalzambre/honeybadger-mcp/badge" alt="Honeybadger Server MCP server" />
-</a>
-
-<a href="https://www.buymeacoffee.com/vishalzambre" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+Enhanced MCP server for Honeybadger error tracking with 15 tools and full API parity. Access and analyze your errors directly from Claude Code, Cursor, or any MCP-compatible client.
 
 ## Prerequisites
 
@@ -15,29 +9,38 @@ MCP server for Honeybadger error tracking. Access and analyze your errors direct
 
 ## Installation
 
-**Global (recommended):**
+**Via Claude Code CLI (recommended):**
 
 ```bash
-npm install -g honeybadger-mcp
+claude mcp add honeybadger \
+  -e HONEYBADGER_API_KEY=your_token \
+  -e HONEYBADGER_PROJECT_ID=12345 \
+  -- npx -y honeybadger-mcp-enhanced
+```
+
+**Global install:**
+
+```bash
+npm install -g honeybadger-mcp-enhanced
 ```
 
 **From source:**
 
 ```bash
-git clone git@github.com:vishalzambre/honeybadger-mcp.git
+git clone git@github.com:matiasow/honeybadger-mcp.git
 cd honeybadger-mcp
 npm install && npm run build
 ```
 
 ## Configuration
 
-Add to your MCP client config (e.g. `~/.cursor/mcp_servers.json` or Claude Code settings):
+For other MCP clients (e.g. Cursor), add to `~/.cursor/mcp_servers.json`:
 
 ```json
 {
   "mcpServers": {
     "honeybadger": {
-      "command": "honeybadger-mcp",
+      "command": "honeybadger-mcp-enhanced",
       "env": {
         "HONEYBADGER_API_KEY": "your_personal_auth_token",
         "HONEYBADGER_PROJECT_ID": "12345"
@@ -212,6 +215,8 @@ List users who were affected by a fault.
 
 #### `query_honeybadger_insights`
 Execute a BadgerQL query against Insights data.
+
+> **Note:** BadgerQL/Insights is a premium Honeybadger feature. This tool returns a `Not found` error if your plan does not include it.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|

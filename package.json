@@ -1,7 +1,7 @@
 {
-  "name": "honeybadger-mcp",
+  "name": "honeybadger-mcp-enhanced",
   "version": "0.5.0",
-  "description": "Model Context Protocol server for Honeybadger integration",
+  "description": "Enhanced MCP server for Honeybadger error tracking with 15 tools and full API parity",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -11,15 +11,17 @@
     "prepare": "npm run build"
   },
   "bin": {
-    "honeybadger-mcp": "./dist/index.js"
+    "honeybadger-mcp-enhanced": "./dist/index.js"
   },
   "keywords": [
     "mcp",
     "honeybadger",
     "error-tracking",
-    "debugging"
+    "debugging",
+    "claude",
+    "model-context-protocol"
   ],
-  "author": "Vishal Zambre",
+  "author": "Matias Ow",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
@@ -36,6 +38,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vishalzambre/honeybadger-mcp.git"
+    "url": "git+https://github.com/matiasow/honeybadger-mcp.git"
   }
 }
