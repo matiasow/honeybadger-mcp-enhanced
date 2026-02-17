@@ -144,3 +144,5 @@ nbdist/
 # Optional mkcert files
 *.pem
 .env
+
+.claude
