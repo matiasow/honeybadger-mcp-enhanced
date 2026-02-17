@@ -73,7 +73,7 @@ class HoneybadgerMCPServer {
     this.server = new McpServer(
       {
         name: 'honeybadger-mcp',
-        version: '0.5.0',
+        version: '0.1.0',
       },
       {
         capabilities: {
@@ -573,7 +573,7 @@ All IDs (project_id, fault_id) are integers, not strings.`,
 
           // Fetch trend and impact data in parallel (best-effort)
           const [countsData, affectedUsersData] = await Promise.all([
-            this.makeHoneybadgerRequest(`/projects/${pid}/faults/counts`, {
+            this.makeHoneybadgerRequest(`/projects/${pid}/faults/summary`, {
               params: {
                 occurred_after: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
               },
