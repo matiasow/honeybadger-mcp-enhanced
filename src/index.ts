@@ -633,10 +633,10 @@ All IDs (project_id, fault_id) are integers, not strings.`,
           const data: any = { name };
           if (resolve_errors_on_deploy !== undefined) data.resolve_errors_on_deploy = resolve_errors_on_deploy;
           if (disable_public_links !== undefined) data.disable_public_links = disable_public_links;
-          if (user_url) data.user_url = user_url;
-          if (source_url) data.source_url = source_url;
-          if (purge_days) data.purge_days = purge_days;
-          if (user_search_field) data.user_search_field = user_search_field;
+          if (user_url !== undefined) data.user_url = user_url;
+          if (source_url !== undefined) data.source_url = source_url;
+          if (purge_days !== undefined) data.purge_days = purge_days;
+          if (user_search_field !== undefined) data.user_search_field = user_search_field;
           const result = await this.makeHoneybadgerRequest(`/projects`, {
             method: 'POST',
             params: account_id ? { account_id } : undefined,
