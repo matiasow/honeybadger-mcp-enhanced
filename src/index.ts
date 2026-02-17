@@ -282,8 +282,8 @@ All IDs (project_id, fault_id) are integers, not strings.`,
           const params: any = { period };
           if (environment) params.environment = environment;
           const endpoint = project_id
-            ? `/projects/${project_id}/occurrence_counts`
-            : `/projects/occurrence_counts`;
+            ? `/projects/${project_id}/occurrences`
+            : `/projects/occurrences`;
           const data = await this.makeHoneybadgerRequest(endpoint, { params });
           return this.formatJsonResponse(data);
         } catch (e: any) {
@@ -337,11 +337,11 @@ All IDs (project_id, fault_id) are integers, not strings.`,
       async ({ project_id, report, start, stop, environment }) => {
         try {
           const pid = this.resolveProjectId(project_id);
-          const params: any = { report };
+          const params: any = {};
           if (start) params.start = this.parseTimestamp(start);
           if (stop) params.stop = this.parseTimestamp(stop);
           if (environment) params.environment = environment;
-          const data = await this.makeHoneybadgerRequest(`/projects/${pid}/reports`, { params });
+          const data = await this.makeHoneybadgerRequest(`/projects/${pid}/reports/${report}`, { params });
           return this.formatJsonResponse(data);
         } catch (e: any) {
           return this.toolError(e.message);
@@ -437,7 +437,7 @@ All IDs (project_id, fault_id) are integers, not strings.`,
           if (created_after) params.created_after = this.parseTimestamp(created_after);
           if (occurred_after) params.occurred_after = this.parseTimestamp(occurred_after);
           if (occurred_before) params.occurred_before = this.parseTimestamp(occurred_before);
-          const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/counts`, { params });
+          const data = await this.makeHoneybadgerRequest(`/projects/${pid}/faults/summary`, { params });
           return this.formatJsonResponse(data);
         } catch (e: any) {
           return this.toolError(e.message);
@@ -498,7 +498,8 @@ All IDs (project_id, fault_id) are integers, not strings.`,
             `/projects/${pid}/faults/${fault_id}/affected_users`,
             { params }
           );
-          return this.formatListResponse(data.results || []);
+          const items = Array.isArray(data) ? data : (data.results || []);
+          return this.formatListResponse(items);
         } catch (e: any) {
           return this.toolError(e.message);
         }
@@ -636,8 +637,9 @@ All IDs (project_id, fault_id) are integers, not strings.`,
           if (source_url) data.source_url = source_url;
           if (purge_days) data.purge_days = purge_days;
           if (user_search_field) data.user_search_field = user_search_field;
-          const result = await this.makeHoneybadgerRequest(`/accounts/${account_id}/projects`, {
+          const result = await this.makeHoneybadgerRequest(`/projects`, {
             method: 'POST',
+            params: account_id ? { account_id } : undefined,
             data,
           });
           return this.formatWriteResponse(result, 'created project');
@@ -830,13 +832,16 @@ ${JSON.stringify(latestNotice.params, null, 2)}
     }
 
     // User impact data
-    if (affectedUsersData?.results?.length > 0) {
+    const affectedUsers = Array.isArray(affectedUsersData)
+      ? affectedUsersData
+      : (affectedUsersData?.results || []);
+    if (affectedUsers.length > 0) {
       analysis += `
 
 ## Impact Assessment
-- Unique users affected: ${affectedUsersData.total_count || affectedUsersData.results.length}
+- Unique users affected: ${affectedUsersData?.total_count || affectedUsers.length}
 - Top affected users:
-${affectedUsersData.results.slice(0, 5).map((u: any) => `  - ${u.identifier}: ${u.count} occurrences`).join('\n')}`;
+${affectedUsers.slice(0, 5).map((u: any) => `  - ${u.user}: ${u.count} occurrences`).join('\n')}`;
     }
 
     analysis += `
