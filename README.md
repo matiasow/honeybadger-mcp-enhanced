@@ -11,7 +11,7 @@ Enhanced MCP server for Honeybadger error tracking with 15 tools and full API pa
 
 ## Installation
 
-**Via Claude Code CLI (recommended):**
+### Claude Code
 
 ```bash
 claude mcp add honeybadger \
@@ -20,29 +20,16 @@ claude mcp add honeybadger \
   -- npx -y honeybadger-mcp-enhanced
 ```
 
-**Global install:**
+### Cursor
 
-```bash
-npm install -g honeybadger-mcp-enhanced
-```
-
-**From source:**
-
-```bash
-git clone git@github.com:matiasow/honeybadger-mcp.git
-cd honeybadger-mcp
-npm install && npm run build
-```
-
-## Configuration
-
-For other MCP clients (e.g. Cursor), add to `~/.cursor/mcp_servers.json`:
+Add to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-level):
 
 ```json
 {
   "mcpServers": {
     "honeybadger": {
-      "command": "honeybadger-mcp-enhanced",
+      "command": "npx",
+      "args": ["-y", "honeybadger-mcp-enhanced"],
       "env": {
         "HONEYBADGER_API_KEY": "your_personal_auth_token",
         "HONEYBADGER_PROJECT_ID": "12345"
@@ -50,6 +37,37 @@ For other MCP clients (e.g. Cursor), add to `~/.cursor/mcp_servers.json`:
     }
   }
 }
+```
+
+Open Cursor settings → **Developer** → **Edit Config** to find the file.
+
+### Google Antigravity
+
+Add to `~/.gemini/antigravity/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "honeybadger": {
+      "command": "npx",
+      "args": ["-y", "honeybadger-mcp-enhanced"],
+      "env": {
+        "HONEYBADGER_API_KEY": "your_personal_auth_token",
+        "HONEYBADGER_PROJECT_ID": "12345"
+      }
+    }
+  }
+}
+```
+
+Open Antigravity → Agent session → **…** → **MCP Servers** → **Manage MCP Servers** → **View raw config**.
+
+### From source
+
+```bash
+git clone git@github.com:matiasow/honeybadger-mcp.git
+cd honeybadger-mcp
+npm install && npm run build
 ```
 
 ### Environment Variables
