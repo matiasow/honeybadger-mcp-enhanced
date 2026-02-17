@@ -22,13 +22,14 @@
   "author": "Vishal Zambre",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.4.0",
-    "axios": "^1.6.0"
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "axios": "^1.13.5",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.0.0"
+    "@types/node": "^20.19.33",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "files": [
     "dist/**/*"
